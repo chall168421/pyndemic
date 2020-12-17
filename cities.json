@@ -1,0 +1,182 @@
+[
+    {"city":"Woolwich",
+     "colour":"black",
+     "connections":["Greenwich", "Barking", "Bromley"]
+     },
+    {"city":"Greenwich",
+     "colour":"black",
+     "connections":["Woolwich", "Lewisham", "Canary Wharf"]
+     },    
+    {"city":"Beckenham",
+     "colour":"black",
+     "connections":["Bromley", "Crystal Palace"]
+     },
+    {"city":"Bromley",
+     "colour":"black",
+     "connections":["Beckenham", "Woolwich", "Lewisham"]
+     },
+    {"city":"Brockley",
+     "colour":"black",
+     "connections":["Lewisham", "Peckham", "Rotherhithe"]
+     },
+    {"city":"Lewisham",
+     "colour":"black",
+     "connections":["Brockley", "Greenwich", "Bromley", "Beckenham"]
+     },
+    {"city":"Peckham",
+     "colour":"black",
+     "connections":["Brixton", "Southwark", "Crystal Palace"]
+     },
+    {"city":"Brixton",
+     "colour":"black",
+     "connections":["Peckham", "Southwark"]
+     },
+    {"city":"Crystal Palace",
+     "colour":"black",
+     "connections":["Peckham", "Beckenham"]
+     },
+    {"city":"Southwark",
+     "colour":"black",
+     "connections":["Brixton", "Peckham", "Rotherhithe"]
+     },
+    {"city":"Rotherhithe",
+     "colour":"black",
+     "connections":["Brockley", "Southwark", "Whitechapel"]
+     },
+
+    
+    {"city":"Barking",
+     "colour":"blue",
+     "connections":["Woolwich", "Canning Town", "East Ham", "Poplar"]
+     },
+    {"city":"Canning Town",
+     "colour":"blue",
+     "connections":["Barking", "Canary Wharf", "Poplar", "Stratford"]
+     },
+    {"city":"East Ham",
+     "colour":"blue",
+     "connections":["Barking", "Stratford", "Leytonstone"]
+     },
+    {"city":"Stratford",
+     "colour":"blue",
+     "connections":["Hackney", "Leytonstone", "Canning Town", "Whitechapel"]
+     },
+    {"city":"Leytonstone",
+     "colour":"blue",
+     "connections":["Hackney", "Stratford", "Walthamstow", "Tottenham"]
+     },
+    {"city":"Walthamstow",
+     "colour":"blue",
+     "connections":["Leytonstone", "Chingford", "Tottenham"]
+     },
+    {"city":"Chingford",
+     "colour":"blue",
+     "connections":["Walthamstow", "Barnet"]
+     },
+    {"city":"Hackney",
+     "colour":"blue",
+     "connections":["Stratford", "Leytonstone", "Whitechapel", "Tottenham"]
+     },
+    {"city":"Canary Wharf",
+     "colour":"blue",
+     "connections":["Poplar", "Greenwich", "Whitechapel"]
+     },
+    {"city":"Whitechapel",
+     "colour":"blue",
+     "connections":["Canary Wharf", "Stratford", "Hackney", "Rotherhithe"]
+     },
+    {"city":"Poplar",
+     "colour":"blue",
+     "connections":["Canary Wharf", "Canning Town", "Barking"]
+     },
+
+    {"city":"Finsbury Park",
+     "colour":"red",
+     "connections":["Tottenham", "Hackney"]
+     },    
+    {"city":"Hampstead Heath",
+     "colour":"red",
+     "connections":["Camden", "Muswell Hill", "Clerkenwell"]
+     },    
+    {"city":"Camden",
+     "colour":"red",
+     "connections":["Hampstead Heath", "Clerkenwell", "Soho", "Kensal Green"]
+     },
+    {"city":"Tottenham",
+     "colour":"red",
+     "connections":["Walthamstow", "Hackney", "Leytonstone", "Finsbury Park"]
+     },
+    {"city":"Muswell Hill",
+     "colour":"red",
+     "connections":["Barnet", "Edgware", "Hampstead Heath"]
+     },
+    {"city":"Barnet",
+     "colour":"red",
+     "connections":["Chingford", "Edgware", "Tottenham"]
+     },
+    {"city":"Edgware",
+     "colour":"red",
+     "connections":["Harrow", "Wembley", "Barnet"]
+     },
+    {"city":"Wembley",
+     "colour":"red",
+     "connections":["Harrow", "Edgware"]
+     },
+    {"city":"Harrow",
+     "colour":"red",
+     "connections":["Wembley", "Edgware"]
+     },
+    {"city":"Clerkenwell",
+     "colour":"red",
+     "connections":["Hampstead Heath", "Soho", "Whitechapel"]
+     },
+    {"city":"Soho",
+     "colour":"red",
+     "connections":["Clerkenwell", "Canary Wharf", "Whitechapel"]
+     },
+
+    {"city":"Balham",
+     "colour":"yellow",
+     "connections":["Brixton", "Battersea", "Wimbledon", "Crystal Palace"]
+     },
+    {"city":"Battersea",
+     "colour":"yellow",
+     "connections":["Balham", "Wimbledon", "South Kensington", "Brixton"]
+     },
+    {"city":"South Kensington",
+     "colour":"yellow",
+     "connections":["Battersea", "Soho", "Kensal Green"]
+     },
+    {"city":"Mitcham",
+     "colour":"yellow",
+     "connections":["Morden", "Crystal Palace", "Balham", "Wimbledon", "Richmond"]
+     },
+    {"city":"Wimbledon",
+     "colour":"yellow",
+     "connections":["Hammersmith", "Mitcham", "New Malden", "Richmond"]
+     },
+    {"city":"Morden",
+     "colour":"yellow",
+     "connections":["Mitcham", "Crystal Palace"]
+     },
+    {"city":"New Malden",
+     "colour":"yellow",
+     "connections":["Wimbledon", "Richmond"]
+     },
+    {"city":"Richmond",
+     "colour":"yellow",
+     "connections":["Wimbledon", "New Malden", "Mitcham"]
+     },
+    {"city":"Hammersmith",
+     "colour":"yellow",
+     "connections":["South Kensington", "Ealing", "Kensal Green", "Richmond"]
+     },
+    {"city":"Ealing",
+     "colour":"yellow",
+     "connections":["Hammersmith"]
+     },
+    {"city":"Kensal Green",
+     "colour":"yellow",
+     "connections":["South Kensington", "Hammersmith", "Camden"]
+     }
+    ]
