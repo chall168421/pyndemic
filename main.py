@@ -901,7 +901,6 @@ DEBUG = False
 
 def debug(board, players):
     if DEBUG:
-        print("WTF is going on")
         print("who's playing?", "".join([p.role for p in players]))
         print("who's opsexpert?","".join([str(p.ops_expert) for p in players]))
         print("who's the medic?","".join([str(p.medic) for p in players]))
