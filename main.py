@@ -2,19 +2,28 @@ from random import randint, choice, shuffle, randrange
 import json
 import sys
 
+error = True
+while error:
+    try:
+        SEP_CHAR = chr(randint(666, 6666))
+        print((SEP_CHAR * 40) + "\n")
+        error = False
+    except UnicodeDecodeError:
+        pass
+
+    
 STARTING_LOCATION = "Brockley"
 EVENTS_IMPLEMENTED = True
 TESTING = False
+LINE_LENGTH = 120
+COL_WIDTH = 65
 
 global roles
-
-
 
 with open("cities.json") as f:
     CITIES = json.load(f)
 
 CITY_LIST = [city["city"].lower() for city in CITIES]
-
 
 COLOURS = ["black", "blue", "yellow", "red"]
 
@@ -37,6 +46,8 @@ ROLES = {"Researcher":"brown", #need to implement ability
 
 CUBE_STARTING_STOCK = 24
 
+ROLE_DEBUG = "Researcher"
+
 class PyndemicException(Exception):
     pass
 
@@ -44,6 +55,7 @@ class PyndemicException(Exception):
 class Board:
 
     def __init__(self):
+        self.turn = 0
         self.roles = dict(ROLES)
         self.roles_used = []
         self.players = []
@@ -61,6 +73,7 @@ class Board:
         self.cube_stock = {"black":CUBE_STARTING_STOCK, "red":CUBE_STARTING_STOCK, "yellow":CUBE_STARTING_STOCK, "blue":CUBE_STARTING_STOCK}
         self.outbreaks_this_turn = []
         self.one_quiet_night = False
+        
         
         # fix missing connections
         for city in self.cities.values():
@@ -103,7 +116,7 @@ class Board:
     def allow_event(self):
         """If any player has an event card in their hand, give the option to play it"""
         if len(self.infection_deck) > 0 and len(self.event_cards) > 0:
-            c = input("Enter any key to play an event card, leave blank to continue.")
+            c = format_input("Enter any key to play an event card, leave blank to continue.")
             if c:
                 self.play_event_card()
 
@@ -126,13 +139,13 @@ class Board:
                     word = "FIRST"
                 elif i == 5:
                     word = "LAST"
-                c = pick_option(["{} ({}).format"(c.name, c.info) for c in forecasting], "WHICH CARD {}".format(word))
+                c = pick_option(["{} ({})".format(c.name, c.info) for c in forecasting], "WHICH CARD {}".format(word))
 
                 new_order.append(forecasting.pop(c))
 
             self.infection_deck = new_order + self.infection_deck
 
-            print("\nThe next phase of infections has been forecast\n")
+            cap_print("The next phase of infections has been forecast")
             
         elif "Government" in event.name:
             stations = self.get_research_stations()
@@ -147,11 +160,11 @@ class Board:
                 
             
             
-            print("\nA government-funded research station was constructed in {}".format(city))
+            cap_print("A government-funded research station was constructed in {}".format(city))
 
         elif "One Quiet Night" in event.name:
             self.one_quiet_night = True
-            print("\nThe next infect cities step will be skipped.")
+            cap_print("The next infect cities step will be skipped.")
 
         elif "Airlift" in event.name:            
             pawns = ["The {} ({})".format(p.role, p.colour) for p in self.players]
@@ -161,17 +174,17 @@ class Board:
             city = choose_city("to airlift the {} to".format(role), exceptions=[current_loc])
             self.players[c].location = city
 
-            print("\The {} was airlifted to {}".format(role, city))
+            cap_print("\The {} was airlifted to {}".format(role, city))
 
         elif "Resilient" in event.name:
 
             if len(self.infection_discard) > 0:
-                cards = [c[1] for c in self.infection_discard]
+                cards = [c.name + " ({})".format(c.info) for c in self.infection_discard]
                 c = pick_option(cards, "INFECTION CARD TO REMOVE FROM THE GAME")
-                removed = self.infection_discard[c][1]
+                removed = self.infection_discard[c].name
                 self.infection_discard.pop(0)
 
-                print("\nThe {} infection card was removed from the game\n".format(removed))
+                cap_print("The {} infection card was removed from the game".format(removed))
 
         
         ## remove card from hand
@@ -181,13 +194,16 @@ class Board:
             if player.contingency:
                 if player.contingency == event:
                     player.contingency = None
-                    print("The {} event card has been removed from the game\n".format(event.name))
+                    cap_print("The {} event card has been removed from the game".format(event.name))
             if event in player.hand:
                 i = player.hand.index(event)
                 self.player_discard.append(player.hand.pop(i))
                     
 
     def check_game_over(self):
+        if self.turn == 0:
+            return
+        
         m = ""
         exhausted_cubes = [colour for colour, amount in self.cube_stock.items() if amount < 1]
         if self.outbreaks > 7:
@@ -311,6 +327,8 @@ class Board:
                 else:
                     researcher_involved = False
 
+                
+
                 if "Take " in move:
                     for role in ROLES.keys():
                         if role in move:
@@ -320,24 +338,26 @@ class Board:
                 else:
                     if len(neighbours) > 1:
                         players = ["The {}".format(p.role) for p in neighbours]
-                        c = pick_option(players, "PLAYER TO GIVE THE {} CARD TO".format(city))
+                        c = pick_option(players, "PLAYER TO GIVE THE{} CARD TO".format(" "+city if player.role != "Researcher" else ""))
                     else:
                         c = 0
 
                     sender = player
                     recipient = neighbours[c]
-                
+
                 if researcher_involved:
                     if "Take " in move:
                         wording = "TAKE FROM THE RESEARCHER"
                     else:
-                        wording = "GIVE TO THE {}".format(recipient.role)
+                        wording = "GIVE"
                     cards = sender.select_cards(type_="CITY")
                     c = pick_option([c.name for c in cards], "A CARD TO {}".format(wording.upper()))
                     card = cards[c]
                     city = card.name
                 else:
                     card = sender.select_cards(card=city)
+                
+                
                 sender.hand.remove(card)                
                 recipient.receive_card(card)
 
@@ -380,7 +400,7 @@ class Board:
                     cure_cubes = self[destination].cubes[disease]
                     if cure_cubes > 0:
                         self[destination].cubes[disease] -= cure_cubes
-                        print("The Medic automatically removed {} cubes of the cured {} disease in {}".format(cure_cubes, disease, destination))
+                        cap_print("The Medic automatically removed {} cubes of the cured {} disease in {}".format(cure_cubes, disease, destination))
                         self.cube_stock[disease] += cure_cubes
 
         elif "CURE" in move:
@@ -396,7 +416,7 @@ class Board:
             elif num_cards > player.cure_set_num:
                 ## allow user to choose which cards to retain
                 while len(same_colour_cards) > player.cure_set_num:
-                    print("You have more than {} {} cards.".format(player.cure_set_num, disease))
+                    cap_print("You have more than {} {} cards.".format(player.cure_set_num, disease))
                     c = pick_option([c.name for c in same_colour_cards], "A CARD TO RETAIN")
                     same_colour_cards.pop(c)
 
@@ -405,7 +425,7 @@ class Board:
 
             self.cured.append(disease)
 
-            msg = "The {} discovered the cure for the {} disease!!!\n\n{}/4 DISEASES CURED\n".format(player.role, disease, len(self.cured))
+            msg = "The {} discovered the cure for the {} disease!!!{}/4 DISEASES CURED".format(player.role, disease, len(self.cured))
             
             self.check_game_over()
             self.check_eradication()
@@ -415,7 +435,7 @@ class Board:
             msg = "The {} skipped this action.".format(player.role)
                 
 
-        print(msg)
+        cap_print(msg)
         
          
 
@@ -438,9 +458,9 @@ class City:
 
     def infect(self, colour, num):
         if self.board.check_player_presence(self.name, "Medic") and colour in self.board.cured:
-            print("The Medic prevented the spread of the cured {} disease in {}. NO EFFECT".format(colour, self.name))
+            cap_print("The Medic prevented the spread of the cured {} disease in {}. NO EFFECT".format(colour, self.name))
         elif self.name in self.board.get_quarantine_locations():
-            print("The Quarantine Specialist prevented the spread of the {} disease in {}. NO EFFECT".format(colour, self.name))
+            cap_print("The Quarantine Specialist prevented the spread of the {} disease in {}. NO EFFECT".format(colour, self.name))
         else:
             
             self.cubes[colour] += num
@@ -449,7 +469,7 @@ class City:
             if self.cubes[colour] > 3:
                 self.outbreak(colour)
             else:
-                print("{} now contains {} disease cube{}.".format(self.name, self.cubes[colour], "s" if self.cubes[colour] > 1 else ""))
+                cap_print("{} now contains {} disease cube{}.".format(self.name, self.cubes[colour], "s" if self.cubes[colour] > 1 else ""))
             
     def outbreak(self, colour):
         self.board.check_game_over()
@@ -457,14 +477,14 @@ class City:
         self.board.cube_stock[colour] += excess # add back to the stock pile
         self.cubes[colour] = 3                  # reset outbreak city to 3 cubes
         if self.name in self.board.outbreaks_this_turn:
-            print("An outbreak has already occurred in {} this turn.".format(self.name))
+            cap_print("An outbreak has already occurred in {} this turn.".format(self.name))
         else:
             self.board.outbreaks_this_turn.append(self.name)                        
-            print("AN OUTBREAK OF THE {} DISEASE OCCURRED IN {}".format(colour, self.name))
+            cap_print("AN OUTBREAK OF THE {} DISEASE OCCURRED IN {}".format(colour, self.name))
             self.board.outbreaks += 1
             for city in self.connections:
-                input("continue? ")
-                print("\n...the disease spread to neighbouring city {}".format(city))
+                format_input((SEP_CHAR * 40) + "")
+                cap_print("...the disease spread to neighbouring city {}".format(city))
                 city = self.board.select_city(city)
                 city.infect(colour, 1)
 
@@ -482,7 +502,7 @@ class City:
         
         return sum(self.cubes.values()), info
     
-class Player():
+class Player:
 
     def __init__(self, count, board):
         self.board = board
@@ -499,29 +519,26 @@ class Player():
 
     def give_ability(self, role):
         if role == "Scientist":
-            print("You only need 4 cards of the same colour to do the DISCOVER A CURE action")
+            cap_print("You only need 4 cards of the same colour to do the DISCOVER A CURE action")
             self.cure_set_num = 4
         elif role == "Medic":
-            print("""Remove all cubes of one colour when doing TREAT DISEASE
-Automatically remove cubes of cured diseases from the city you are in (and prevent them from being placed there)""")
+            cap_print("""Remove all cubes of one colour when doing TREAT DISEASE. Automatically remove cubes of cured diseases from the city you are in (and prevent them from being placed there)""")
             self.medic = True
         elif role == "Quarantine Specialist":
-            print("Prevent disease cube placements (and outbreaks) in the city you are in and all cities connected to it")
+            cap_print("Prevent disease cube placements (and outbreaks) in the city you are in and all cities connected to it")
         elif role == "Contingency Planner":
-            print("""As an action, take any discarded event card and store it on this card. When you play the stored event card, remove it from the game.
-(Limit - 1 event card at a time which is not part of your hand)""")
+            cap_print("""As an action, take any discarded event card and store it on this card. When you play the stored event card, remove it from the game. (Limit - 1 event card at a time which is not part of your hand)""")
             self.contingency = True
         elif role == "Operations Expert":
-            print("""As an action, build a research station in the city you are in (no City card needed)
-Once per turn as an action, move from a research station to any city by discarding any City card.""")
+            cap_print("""As an action, build a research station in the city you are in (no City card needed) Once per turn as an action, move from a research station to any city by discarding any City card.""")
             self.ops_expert = True
         elif role == "Dispatcher":
-            print("""As an action, move any other pawn to a city containing another pawn""")
+            cap_print("""As an action, move any other pawn to a city containing another pawn""")
             self.dispatcher = True
         elif role == "Researcher":
-            print("""When doing the SHARE KNOWLEDGE action, GIVE any city card to a player in the same city (it need not match the city you are in)""")
+            cap_print("""When doing the SHARE KNOWLEDGE action, GIVE any city card to a player in the same city (it need not match the city you are in)""")
             self.researcher = True
-        input("continue? ")         
+        format_input("" + (SEP_CHAR * 40) + "")         
 
     def select_cards(self, card=None, colour=None, type_=None):
         """Return a Card object that matches the requested city, or a list of cards matching a colour"""
@@ -538,16 +555,24 @@ Once per turn as an action, move from a research station to any city by discardi
 
     def count_cards(self, colour):  
         n = len([c for c in self.hand if c.info.lower() == colour])
-        print("I counted {} cards".format(n))
+        cap_print("I counted {} cards".format(n))
         return n
         
         
     def choose_role(self):
+
         roles = self.board.roles
-        role = choice(list(roles.keys()))
+
+        if ROLE_DEBUG and self.player_no == 1:
+            role = ROLE_DEBUG
+        else:            
+            role = choice(list(roles.keys()))
+            
         pawn = roles[role]
         roles.pop(role)        
-        print("PLAYER {}'s role is the {}. They will use the {} pawn".format(self.player_no, role, pawn))
+            
+        
+        cap_print("PLAYER {}'s role is the {}. They will use the {} pawn.".format(self.player_no, role, pawn))
         self.give_ability(role)
         self.role = role
         self.board.roles_used.append(role)    
@@ -576,14 +601,14 @@ Once per turn as an action, move from a research station to any city by discardi
 
     def discard(self, card):
         c = self.select_cards(card)
-        print("The {} utilised their {} card.".format(self.role, c.name))
+        cap_print("The {} utilised their {} card.".format(self.role, c.name))
         self.hand.remove(c)
 
     def receive_card(self, card):
         proposed_hand = list(self.hand + [card])
         if len(proposed_hand) > 7:
-            print("{}: HAND MAXIMUM REACHED".format(self.role))
-            print("Select a card to discard: ")            
+            cap_print("{}: HAND MAXIMUM REACHED".format(self.role))
+            cap_print("Select a card to discard: ")            
             cities = ["[{}]: {}".format(c.type, c.name) for c in proposed_hand]
             discarding = pick_option(cities, "A CARD TO DISCARD")
             ## if the list index of the card to discard is 7, player is choosing to discard a newly dealt card
@@ -592,7 +617,7 @@ Once per turn as an action, move from a research station to any city by discardi
             else:
                 self.board.player_discard.append(self.hand.pop(discarding))
                 self.hand.append(card)
-            print("The {} discarded the {}:{} card.".format(self.role,  proposed_hand[discarding].type,  proposed_hand[discarding].name))
+            cap_print("The {} discarded the {}:{} card.".format(self.role,  proposed_hand[discarding].type,  proposed_hand[discarding].name))
         else:
             self.hand.append(card)
 
@@ -668,21 +693,44 @@ class Card:
         self.info = details
 
 
+def format_input(s):
+    cap_print(s)
+    return input()
+
+
+def cap_print(*strings, end="\n"):
+    i = 1
+    line_break = False
+    for string in strings:        
+        for s in str(string):
+            if s == "":
+                i = 1
+            print(s, end="")
+            if i % LINE_LENGTH == 0:
+                line_break = True
+            if line_break and s.strip() == "":
+                print()
+                i = 1
+                line_break = False
+            i += 1
+        print(" ", end="")    
+    print(end)
+    
+
 def fancy_print(string):
     char = choice("-=*~")
-    print()
-    print(char*len(string))
-    print(string)
-    print(char*len(string))
+    
+    cap_print(char*len(string))
+    cap_print(string)
+    cap_print(char*len(string))
 
 def display_board(board, players):
-    print()
-    print("The board currently looks like this...")
-    print()
-    input("continue? ")
+    
+    cap_print("The board currently looks like this...")
+    
+    format_input((SEP_CHAR * 40) + "")
     fancy_print("OUTBREAK COUNTER: {} /// ".format(board.outbreaks) + "INFECTION RATE: {}".format(board.infection_rate))
     fancy_print("DISEASE SPREAD")
-
 
     print("{:30}{:30}{:30}{:30}".format("BLUE:", "YELLOW:", "BLACK:", "RED:"))
     blues = [city for city in board if city.colour == "blue" and city.get_disease_stats()[0] > 0]
@@ -702,8 +750,8 @@ def display_board(board, players):
     comment = ""
 
     for blue, yel, black, red in zip(blues, yellows, blacks, reds):
-        #print("hello")
-        #print(blue, yel, black, red)
+        #cap_print("hello")
+        #cap_print(blue, yel, black, red)
         for city in [blue, yel, black, red]:
             if city is not None:
                 num, info = board[city.name].get_disease_stats()
@@ -717,19 +765,20 @@ def display_board(board, players):
             c += 1
             if c % 4 == 0:
                 print()
+                
 
 def display_hands(board, players):
     fancy_print("PLAYER HANDS:")
 
 
     for player in players:
-        print("The {} is in {}".format(player.role.upper(), player.location))
+        cap_print("The {} is in {}".format(player.role.upper(), player.location))
         
         for card in player.hand:
             stat = "[{}]: {} ({})".format(card.type, card.name, card.info)
-            print(stat)
-        print()
-        input("continue? ")
+            cap_print(stat)
+        
+        format_input((SEP_CHAR * 40) + "")
 
     fancy_print("RESEARCH STATIONS: " + "".join("{}/".format(place) for place in board.get_research_stations())[:-1])
 
@@ -740,52 +789,87 @@ def choose_city(prompt, exceptions=[]):
         cities.remove(city.lower())        
         
     while destination not in cities:
-        destination = input("Enter city {}\n".format(prompt)).lower()
+        destination = format_input("Enter city {}".format(prompt)).lower()
         if destination not in cities:
-            print("Unnecessary or otherwise illegal choice.")
+            cap_print("Unnecessary or otherwise illegal choice.")
 
     return destination.title()
 
 def pick_option(options, category="AN OPTION"):
     """Allow the user to choose from a list of options, and make sure
     the option they have selected is valid. Return the option as a list index"""
+
+    sorted_options = sorted(options, key=len)
+    
+    
     columns = False
-    if len(options) > 5:
+    if len(sorted_options) > 5:
         columns = True   
  
     c = ""
-    while c not in [str(i) for i in range(1, len(options)+1)]:
-        print("\nSELECT {}\n".format(category.upper()))
+    while c not in [str(i) for i in range(1, len(sorted_options)+1)]:
+        cap_print("SELECT {}".format(category.upper()))
         if not columns:
-            for i, option in enumerate(options):
+            for i, option in enumerate(sorted_options):
                 print("{}. {}".format(i+1, option))
         else:
             i = 1
-            column1 = options[0::2]
-            column2 = options[1::2] + [""]
+            column1 = sorted_options[0::2]
+            column2 = sorted_options[1::2] + [""]
+
+            c1number = 1
+            c2number = 2
             for col1, col2 in zip(column1, column2):
-                print("{}. {:65}   | {}. {:65}".format(i, col1[:65], i+1, col2[:65]))
+
+                c1x, c2x = 0, 0
+
+                this_num1, this_num2 = c1number, c2number
+
+                while c1x < len(col1) or c2x < len(col2):
+
+                
+                    col1chunk = col1[c1x:c1x+COL_WIDTH]
+                    col2chunk = col2[c2x:c2x+COL_WIDTH]
+                    
+                    this_num1 = str(c1number)+". " if c1x == 0 else (len(str(c1number))+1) * " "
+                    this_num2 = str(c2number)+". " if c2x == 0 else (len(str(c2number))+2) * " "
+                    print("{:65}\t|\t{:65}".format(this_num1+col1chunk, this_num2+col2chunk))
+
+                    c1x += 65
+                    c2x += 65
+
+                c1number += 2
+                c2number += 2
+                    
                 i += 2
 
-        c = input("continue? ")
+        c = format_input("\n" + (SEP_CHAR * 40) + "")
 
-    return int(c)-1
+
+    c = int(c)-1
+
+    orig_index = options.index(sorted_options[c])
+
+
+    return orig_index
+
+    
 
 def get_num(prompt, min_, max_):
     """Get the user to enter a valid number within a range"""
     
     valid = False
     while not valid:
-        n = input(prompt)
+        n = format_input(prompt+"")
         if n.isdigit():
             n = int(n)
             if n in range(min_, max_+1):
                 valid = True
                 return n
             else:
-                print("Enter a number between {} and {}".format(min_, max_))
+                cap_print("Enter a number between {} and {}".format(min_, max_))
         else:
-            print("Enter digits only.")
+            cap_print("Enter digits only.")
 
 def get_difficulty():
     """Add three onto the number of the difficulty rating selected.
@@ -814,7 +898,7 @@ def create_player_deck(difficulty, players, board):
     elif len(players) == 3:
         starting += 1
         
-    print("Each player will begin with a starting hand of {} cards.".format(starting))
+    cap_print("Each player will begin with a starting hand of {} cards.".format(starting))
 
     fancy_print("DEALING PLAYER CARDS")
 
@@ -825,7 +909,7 @@ def create_player_deck(difficulty, players, board):
             deal_player_cards(p, 1, board)    
                        
     division = len(deck) // difficulty
-    input(division)
+    format_input(division)
     # for each epidemic card
     for i in range(difficulty):
         # pick a random position in that division of the deck
@@ -835,7 +919,7 @@ def create_player_deck(difficulty, players, board):
     return deck
 
 def create_infection_deck():
-    deck = [[c["colour"], c["city"]] for c in list(CITIES)]
+    deck = [Card("infection", c["city"], c["colour"]) for c in list(CITIES)]
     shuffle(deck)
     return deck
 
@@ -844,23 +928,22 @@ def infect_cities(board, rate=None, cubes=1):
         rate = board.infection_rate
 
     for i in range(rate):
-        card =board.infection_deck.pop(0)
-        colour, city = card
-        print("{} INFECTION CARD {} was drawn.".format(colour, city))
+        card = board.infection_deck.pop(0)
+        colour, city = card.info, card.name
+        cap_print("{} INFECTION CARD {} was drawn.".format(colour, city))
         if colour in board.eradicated:
-            print("{} disease eradicated. NO EFFECT".format(colour))
+            cap_print("{} disease eradicated. NO EFFECT".format(colour))
         else:
-
             board[city].infect(colour, cubes)
             board.allow_event()
         board.infection_discard.append(card)
 
 def epidemic(board):
-    print("EPIDEMIC!!!!")
+    cap_print("EPIDEMIC!!!!")
     board.epidemic_counter += 1
     if board.epidemic_counter + 1 % 3 == 0:
         board.infection_rate += 1
-        print("\nThe infection rate increased to {}\n.".format(board.infection_rate))
+        cap_print("The infection rate increased to {}.".format(board.infection_rate))
     infect_cities(board, rate=1, cubes=3)
     shuffle(board.infection_discard)                                      # shuffle discard pile
     board.infection_deck = board.infection_discard + board.infection_deck             # add discard pile to top of deck
@@ -877,19 +960,24 @@ def deal_player_cards(player, n, board):
             card = board.player_deck.pop(0)       
         except IndexError:
             board.check_game_over()
-        print("A {} card was drawn by the {}".format(card.type, player.role))
+            
+        ctype = card.type
+        cap_print("A{} {} card was drawn by the {}".format("n" if ctype == "EVENT" else "", ctype, player.role))
         if "EVENT" in card.type:
             board.event_cards.append(card)
-            board.allow_event()
+            
         
         if "EPIDEMIC" in card.type:            
             epidemic(board)
             board.player_discard.append(card)
+
             continue
             
-        print("{}: {}".format(card.name.upper(), card.info))
-        input("continue? ") 
+        cap_print("{}: {}".format(card.name.upper(), card.info))
+        #format_input("" + (SEP_CHAR * 40) + "") 
         dealt = player.receive_card(card)
+
+    board.allow_event()
         
 
 
@@ -901,9 +989,9 @@ DEBUG = False
 
 def debug(board, players):
     if DEBUG:
-        print("who's playing?", "".join([p.role for p in players]))
-        print("who's opsexpert?","".join([str(p.ops_expert) for p in players]))
-        print("who's the medic?","".join([str(p.medic) for p in players]))
+        cap_print("who's playing?", "".join([p.role for p in players]))
+        cap_print("who's opsexpert?","".join([str(p.ops_expert) for p in players]))
+        cap_print("who's the medic?","".join([str(p.medic) for p in players]))
 
 
 
@@ -913,27 +1001,26 @@ def main_loop():
     board = Board()
     
     difficulty = get_difficulty()
-    print()
-    players = create_players(board)
-
+    
+    
     board[STARTING_LOCATION].research_station = True
+    msg = "Research station was built in {}".format(STARTING_LOCATION)
     
-    infection_deck = create_infection_deck()
-    infection_discard = []
-    print()
-    player_deck = create_player_deck(difficulty, players, board)
-    player_discard = []
-    
-    board.players = players
-    board.infection_deck = infection_deck
-    board.infection_discard = infection_discard
-    board.player_deck = player_deck
-    board.player_discard = player_discard
+    board.infection_deck = create_infection_deck()
+    board.infection_discard = []
+    board.player_discard = []
 
     for i in range(3, 0, -1):
         infect_cities(board, rate=3, cubes=i)
+
+
+    players = create_players(board)    
+    board.players = players
+    player_deck = create_player_deck(difficulty, players, board)    
+    board.player_deck = player_deck
     
-    turn = 1
+    
+    board.turn = 1
 
     game_over = False
 
@@ -948,36 +1035,35 @@ def main_loop():
         display_board(board, players)
         display_hands(board, players)        
 
-        print("TURN {}".format(1))
-        current = players[(turn-1) % len(players)]
-        print("It's the {} player's turn ({})".format(current.colour, current.role))
+        cap_print("TURN {}".format(1))
+        current = players[(board.turn-1) % len(players)]
+        cap_print("It's the {} player's turn ({})".format(current.colour, current.role))
                
         action = 1
         while action <= 4:
             
             debug(board, players)
             board.outbreaks_this_turn = []
-            print("\nYou are in {}".format(current.location))     
-            board.allow_event()                
-            print("\nACTION {}/4".format(action))
+            cap_print("You are in {}".format(current.location))                           
+            cap_print("ACTION {}/4".format(action))            
             board.player_move(current)
             action += 1
 
            
-        print("The {} completed all of their actions".format(current.role))
+        cap_print("The {} completed all of their actions".format(current.role))
 
         fancy_print("DRAWING PLAYER CARDS:")
-        input("continue? ")
+        #format_input((SEP_CHAR * 40) + "")
         deal_player_cards(current, 2, board)
         fancy_print("INFECTING CITIES:")        
-        input("continue? ")
+        #format_input((SEP_CHAR * 40) + "")
         if board.one_quiet_night:
-            print("\nOne quiet night...\n")
+            cap_print("One quiet night...")
             board.one_quiet_night = False
         else:
             infect_cities(board)
 
-        turn += 1
+        board.turn += 1
             
             
 
